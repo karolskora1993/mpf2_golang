@@ -1,8 +1,11 @@
 package main
 
 import (
-	"fmt"
 	"math"
+	"github.com/wcharczuk/go-chart"
+	"bytes"
+	"fmt"
+	"os"
 )
 
 const (
@@ -16,6 +19,7 @@ const (
 	dt      = 0.001
 	C_ALFA  = (temp - 912) / -240
 	LENGTH = 100
+	FILE_NAME = "chart.png"
 )
 
 var (
@@ -31,15 +35,13 @@ func main() {
 		if i<6 {
 			c1[i] = 0.67
 		} else if i==6 {
-			c1[i] = 0.67
+			c1[i] = 0.02
 			ksi = i
 		} else {
 			c1[i] = 0.02
 		}
 	}
-
 	var c2 = copy(c1)
-
 	steps := 1000
 
 	for i:=0 ; i<steps ; i++ {
@@ -52,18 +54,18 @@ func main() {
 			} else {
 				c2[j] = (1 - 2 * (D * dt / math.Pow(dx, 2))) * c1[j] + (D * dt / math.Pow(dx, 2)) * (c1[j - 1] + c1[j + 1])
 			}
-	}
+		}
 		if ksi<len(c1)-1 {
 			c2[ksi + 1] = c2[ksi]
 		}
 		c1 = copy(c2)
-
 		if c1[ksi]>=C_ALFA && ksi<len(c1)-1 {
 			ksi+=1
 		}
 
 	}
-	fmt.Println(c1)
+
+	showChart(c1[:])
 }
 
 func copy(a [LENGTH]float64) [LENGTH]float64 {
@@ -72,4 +74,32 @@ func copy(a [LENGTH]float64) [LENGTH]float64 {
 		b[i] = a[i]
 	}
 	return b
+}
+
+func showChart(values []float64) {
+	var xValues []float64
+
+	for i:=0 ; i<LENGTH ; i+=LENGTH/10 {
+		xValues = append(xValues, float64(i))
+	}
+
+	graph := chart.Chart{
+		Series: []chart.Series{
+			chart.ContinuousSeries{
+				XValues: xValues,
+				YValues: values,
+			},
+		},
+	}
+
+	buffer := bytes.NewBuffer([]byte{})
+	err := graph.Render(chart.PNG, buffer)
+	if err != nil {
+		fmt.Print(err)
+	}
+
+
+	f, err := os.Create(FILE_NAME)
+	defer f.Close()
+	f.Write(buffer.Bytes())
 }
